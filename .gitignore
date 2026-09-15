@@ -1,0 +1,44 @@
+# =====================================================================
+# Zorvex | Network — root .gitignore
+# =====================================================================
+
+# Dependencies
+/vendor/
+/node_modules/
+
+# Environment files — never commit real secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+/storage/logs/*
+!/storage/logs/.gitkeep
+/data/
+
+# Tests / coverage
+/coverage/
+.phpunit.result.cache
+.phpunit.cache/
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Docker
+docker/data/
+*.pid
+
+# Build artifacts
+/public/build/
+composer.phar
+
+# PHP
+*.tmp
+php_errors.log

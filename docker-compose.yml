@@ -1,0 +1,93 @@
+# =====================================================================
+# Zorvex | Network — Docker Compose
+# nginx + php-fpm + mysql (+ redis optional)
+# =====================================================================
+
+services:
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: zorvex-nginx
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-8080}:80"
+    volumes:
+      - ./public:/var/www/html/public:ro
+      - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - php-fpm
+    networks:
+      - zorvex
+
+  php-fpm:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: zorvex-php
+    restart: unless-stopped
+    environment:
+      DB_HOST: ${DB_HOST:-mysql}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_DATABASE: ${DB_DATABASE:-zorvex}
+      DB_USERNAME: ${DB_USERNAME:-zorvex}
+      DB_PASSWORD: ${DB_PASSWORD:-zorvex_secret}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_ADMIN_IDS: ${TELEGRAM_ADMIN_IDS:-}
+      APP_URL: ${APP_URL:-http://localhost}
+      APP_ENV: ${APP_ENV:-production}
+      APP_DEBUG: ${APP_DEBUG:-false}
+      APP_TIMEZONE: ${APP_TIMEZONE:-Asia/Tehran}
+      APP_KEY: ${APP_KEY:-}
+      LOG_PATH: /var/www/html/storage/logs/app.log
+      EXECUTE_MIGRATIONS: ${EXECUTE_MIGRATIONS:-1}
+    volumes:
+      - ./:/var/www/html
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - zorvex
+
+  mysql:
+    image: mysql:8.0
+    container_name: zorvex-mysql
+    restart: unless-stopped
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:-zorvex}
+      MYSQL_USER: ${DB_USERNAME:-zorvex}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-zorvex_secret}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root_secret_change_me}
+    ports:
+      - "${DB_PORT_EXPOSED:-3307}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${DB_ROOT_PASSWORD:-root_secret_change_me}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - zorvex
+
+  # ---- Optional Redis for future scaling / caching ----
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: zorvex-redis
+  #   restart: unless-stopped
+  #   command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
+  #   volumes:
+  #     - redis_data:/data
+  #   networks:
+  #     - zorvex
+
+volumes:
+  mysql_data:
+  # redis_data:
+
+networks:
+  zorvex:
+    driver: bridge

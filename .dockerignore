@@ -1,0 +1,33 @@
+# Dependencies
+vendor/
+node_modules/
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+
+# Storage & logs
+storage/logs/*
+!storage/logs/.gitkeep
+*.log
+
+# Version control
+.git/
+.gitignore
+.gitattributes
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Docker internals
+docker/data/
+
+# Misc
+tests/
+*.md
+!README.md
