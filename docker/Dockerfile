@@ -1,29 +1,27 @@
 # =====================================================================
 # Zorvex | Network — PHP-FPM container
-# PHP 8.2 with every extension the bot needs, Composer, and supervisor.
+# PHP 8.2 (Debian-based) with every extension the bot needs.
+# Debian base is more reliable for building extensions than Alpine.
 # =====================================================================
 
-FROM php:8.2-fpm-alpine AS base
+FROM php:8.2-fpm
 
-# --- Build-time dependencies for pecl installs ---
-RUN apk add --no-cache --virtual .build-deps \
-        $PHPIZE_DEPS \
-        curl-dev \
-        libxml2-dev \
-        openssl-dev \
-    && apk add --no-cache \
+# --- System dependencies ---
+RUN apt-get update && apt-get install -y --no-install-recommends \
         curl \
-        fcgi \
         git \
-        icu-dev \
+        libicu-dev \
         libzip-dev \
-        mysql-client \
-        oniguruma-dev \
-        openssl \
+        libonig-dev \
+        libxml2-dev \
+        libssl-dev \
+        default-mysql-client \
+        unzip \
         zip \
-        gnu-libiconv
+        ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
-# PHP extensions required by the application.
+# --- PHP extensions ---
 RUN docker-php-ext-configure intl \
     && docker-php-ext-install \
         bcmath \
@@ -38,27 +36,22 @@ RUN docker-php-ext-configure intl \
     && pecl install redis \
     && docker-php-ext-enable redis
 
-# Install Composer.
+# --- Install Composer ---
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# --- Runtime dependencies (kept, build-deps removed) ---
-RUN apk del .build-deps \
-    && rm -rf /var/cache/apk/*
-
-# PHP production configuration.
+# --- PHP production configuration ---
 COPY docker/php.ini /usr/local/etc/php/conf.d/99-zorvex.ini
 
 # --- App source ---
 WORKDIR /var/www/html
 COPY . .
 
-# Install dependencies (no dev) and optimize the autoloader.
+# --- Install dependencies (no dev) and optimize the autoloader ---
 RUN set -eux; \
-    composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader \
-        --no-scripts --ignore-platform-req=ext-intl || \
+    composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader --no-scripts || \
     composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader --no-scripts
 
-# Runtime user.
+# --- Runtime user & storage ---
 RUN chown -R www-data:www-data /var/www/html \
     && mkdir -p /var/www/html/storage/logs \
     && chmod -R 775 /var/www/html/storage
